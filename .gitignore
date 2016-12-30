@@ -1,0 +1,11 @@
+# no .a or .o files
+*.[oa]
+
+# no files starting with ~
+*~
+
+# ignore all files in the project/ directory
+project/
+
+# ignore all files in the target/ directory
+target/
