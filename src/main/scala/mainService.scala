@@ -15,7 +15,7 @@ import exceptions.NoResourceFoundException
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import models.User
-import models.request.GetUserRequest
+import models.request.{GetUserRequest, PostNewUserRequest}
 
 trait MainService {
 
@@ -33,30 +33,58 @@ trait MainService {
       }
     }
 
-  private def complexRoute(id : Int) : Route =
-    parameters("username", "email".as[String]?) { (username : String, email : Option[String]) =>
-      val request : GetUserRequest = GetUserRequest(id, username)
-      val responseFuture : Future[Any] = userActor ? request
-      onSuccess(responseFuture) {
-        case user: User => {
-          complete {
-            HttpResponse(StatusCodes.OK, entity = user.username)
-          }
+  private lazy val userRoute =
+    pathEnd {
+      get {
+        complete {
+          HttpResponse(StatusCodes.OK, entity = "GET ALL USERS REQUEST")
         }
-        case e : NoResourceFoundException => {
-          complete {
-            HttpResponse(StatusCodes.OK, entity = e.message)
+      } ~
+      post {
+        parameters("fName".as[String], "lName".as[String], "email".as[String], "password".as[String]) {
+          (fName: String, lName: String, email: String, password: String) =>
+            val request : PostNewUserRequest = PostNewUserRequest(fName, lName, email, password)
+            val responseFuture : Future[Any] = userActor ? request
+            onSuccess(responseFuture) {
+              case user: User => {
+                complete {
+                  HttpResponse(StatusCodes.OK, entity = s"$user")
+                }
+              }
+              case e : NoResourceFoundException => {
+                complete {
+                  HttpResponse(StatusCodes.OK, entity = e.message)
+                }
+              }
+            }
+        }
+      }
+    } ~
+    path(IntNumber) { (id) =>
+      get {
+        val request: GetUserRequest = GetUserRequest(id)
+        val responseFuture: Future[Any] = userActor ? request
+        onSuccess(responseFuture) {
+          case user: User => {
+            complete {
+              HttpResponse(StatusCodes.OK, entity = s"$user")
+            }
+          }
+          case e: NoResourceFoundException => {
+            complete {
+              HttpResponse(StatusCodes.OK, entity = e.message)
+            }
           }
         }
       }
     }
 
   val routes =
-    path("hello") {
+    path("") {
       helloRoute
     } ~
-    path("users" / IntNumber ) { (id) =>
-      complexRoute(id)
+    pathPrefix("users") {
+      userRoute
     }
 
 }

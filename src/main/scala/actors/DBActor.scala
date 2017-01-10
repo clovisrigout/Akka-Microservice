@@ -8,7 +8,7 @@ class DBActor extends Actor with ActorLogging {
   override def receive : Actor.Receive = {
     case request : DBRequest => {
       log.info("Recieved DBRequest")
-      val response : DBResponse = Database.executeQuery(request.query)
+      val response : DBResponse = Database.executeRequest(request)
       log.info(s"Executed query")
       sender ! response
     }

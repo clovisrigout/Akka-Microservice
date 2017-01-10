@@ -8,7 +8,7 @@ import akka.util.Timeout
 import database.DBResponse
 import exceptions.NoResourceFoundException
 import models.User
-import models.request.GetUserRequest
+import models.request.{GetUserRequest, PostNewUserRequest}
 
 import scala.concurrent.Future
 
@@ -20,7 +20,7 @@ class UserActor extends Actor with ActorLogging {
       val db : ActorRef = context.actorOf(Props(classOf[DBActor]))
       implicit val timeout = Timeout(5L, TimeUnit.SECONDS)
       implicit val executionContext = context.system.dispatcher
-      val f : Future[Any] = db ? request.dBRequest
+      val f : Future[Any] = db ? request
       val parent = sender
       f.onSuccess({
         case dbResponse : DBResponse => {
@@ -31,10 +31,32 @@ class UserActor extends Actor with ActorLogging {
             parent ! user
           } else {
             log.info("Received empty DBResponse")
-            parent ! NoResourceFoundException(message = s"No user found for query ${request.dBRequest.query}")
+            parent ! NoResourceFoundException(message = s"No user found for query ${request.sqlQuery}")
           }
         }
       })
     }
+    case request : PostNewUserRequest => {
+      log.info("Received PostNewUserRequest")
+      val db : ActorRef = context.actorOf(Props(classOf[DBActor]))
+      implicit val timeout = Timeout(5L, TimeUnit.SECONDS)
+      implicit val executionContext = context.system.dispatcher
+      val f : Future[Any] = db ? request
+      val parent = sender
+      f.onSuccess({
+        case dbResponse : DBResponse => {
+          log.info("Received DBResponse")
+          if(dbResponse.resultMap.nonEmpty){
+            log.info(s"Received non-empty DBResponse with id = ${dbResponse.resultMap.head("id")}")
+            val user : User = User(dbResponse.resultMap.head)
+            parent ! user
+          } else {
+            log.info("Received empty DBResponse")
+            parent ! NoResourceFoundException(message = s"No user found for query ${request.sqlQuery}")
+          }
+        }
+      })
+    }
+
   }
 }

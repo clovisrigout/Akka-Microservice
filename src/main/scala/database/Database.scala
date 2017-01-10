@@ -18,17 +18,42 @@ object Database {
     val password = config.getString("mysql.password")
     val driver = config.getString("mysql.driver")
 
-    val url = "jdbc:mysql://%s:%d/%s".format(host, port, name)
+    val url = "jdbc:mysql://%s:%d/%s?allowMultiQueries=true".format(host, port, name)
 
     private var connection : Connection = null
+
+    def executeRequest(request : DBRequest) : DBResponse = {
+      try {
+        if (!this.isConnected()) {
+          this.dbConnect()
+        }
+        var resultMap = List[Map[String, Any]]()
+        val stmt : CallableStatement = request.createStatement(this.connection)
+        var hadResults : Boolean = stmt.execute()
+        while (hadResults) {
+          val rs : ResultSet = stmt.getResultSet
+          resultMap = makeMapFromRS(rs)
+          hadResults = stmt.getMoreResults();
+        }
+        this.dbClose()
+        DBResponse(resultMap)
+      } catch {
+        case e : Exception => {
+          e.printStackTrace()
+          throw e
+        }
+      }
+    }
 
     def executeQuery(query : String) : DBResponse = {
       try {
         if (!this.isConnected()) {
           this.dbConnect()
         }
+        println(query)
         val statement: Statement = this.connection.createStatement
         val rs: ResultSet = statement.executeQuery(query)
+
         val resultMap : List[Map[String, Any]] = makeMapFromRS(rs)
         this.dbClose()
         DBResponse(resultMap)

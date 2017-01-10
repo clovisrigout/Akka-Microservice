@@ -2,17 +2,19 @@ package models
 
 import exceptions.ModelValidationException
 
-class User(val id: Int, val username : String)
+class User(id: Int, fName: String, lName: String, email: String)
 
 object User {
 
-  def apply(id: Int, username: String): User = new User(id, username)
+  def apply(id: Int, fName: String, lName: String, email: String): User = new User(id, fName, lName, email)
 
   def apply(map: Map[String, Any]): User = {
     try {
       val id = map("id").asInstanceOf[Int]
-      val username = map("username").asInstanceOf[String]
-      User(id = id, username = username)
+      val fName = map("fName").asInstanceOf[String]
+      val lName = map("lName").asInstanceOf[String]
+      val email = map("email").asInstanceOf[String]
+      User(id = id, fName = fName, lName = lName, email = email)
     } catch {
       case e : Exception => {
         throw ModelValidationException(message = "User creation not valid")
