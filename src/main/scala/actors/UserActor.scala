@@ -7,7 +7,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import database.DBResponse
 import exceptions.NoResourceFoundException
-import models.User
+import models.{Session, User}
 import models.request.{GetUserRequest, PostNewUserRequest}
 
 import scala.concurrent.Future
@@ -49,7 +49,10 @@ class UserActor extends Actor with ActorLogging {
           if(dbResponse.resultMap.nonEmpty){
             log.info(s"Received non-empty DBResponse with id = ${dbResponse.resultMap.head("id")}")
             val user : User = User(dbResponse.resultMap.head)
-            parent ! user
+            log.info(s"$user")
+            val session = Session(dbResponse.resultMap.head, user.id)
+            log.info(s"$session")
+            parent ! (user, session)
           } else {
             log.info("Received empty DBResponse")
             parent ! NoResourceFoundException(message = s"No user found for query ${request.sqlQuery}")

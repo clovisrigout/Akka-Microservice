@@ -2,7 +2,13 @@ package models
 
 import exceptions.ModelValidationException
 
-class User(id: Int, fName: String, lName: String, email: String)
+class User(val id: Int, val fName: String, val lName: String, val email: String) {
+
+  override def toString: String = {
+    "\"user\": {\"id\":" + {this.id} + ", \"fName\": \"" + {this.fName} + "\", \"lName\": \"" + {this.lName} + "\", \"email\": \"" + {this.email} + "\" }"
+  }
+
+}
 
 object User {
 
@@ -21,5 +27,4 @@ object User {
       }
     }
   }
-
 }

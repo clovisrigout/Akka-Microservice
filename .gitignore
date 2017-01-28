@@ -1,6 +1,9 @@
 # no .a or .o files
 *.[oa]
 
+# no .idea
+.idea
+
 # no files starting with ~
 *~
 
