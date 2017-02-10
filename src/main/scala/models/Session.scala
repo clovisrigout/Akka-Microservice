@@ -2,7 +2,7 @@ package models
 
 import exceptions.ModelValidationException
 
-class Session(val id: Int, val sessionKey : String, val userId: Int) {
+case class Session(id: Int, sessionKey : String, userId: Int) {
 
   override def toString: String = {
     "\"session\": {\"id\":" + {this.id} + ", \"sessionKey\": \"" + {this.sessionKey} + "\", \"userId\": \"" + {this.userId} + "\" }"
@@ -12,7 +12,18 @@ class Session(val id: Int, val sessionKey : String, val userId: Int) {
 
 object Session {
 
-  def apply(id: Int, sessionKey: String, userId: Int): Session = new Session(id, sessionKey, userId)
+  def apply(map: Map[String, Any]): Session = {
+    try {
+      val id = map("id").asInstanceOf[Int]
+      val sessionKey = map("sessionKey").asInstanceOf[String]
+      val userId = map("userId").asInstanceOf[Int]
+      Session(id = id, sessionKey = sessionKey, userId = userId)
+    } catch {
+      case e : Exception => {
+        throw ModelValidationException(message = "Session creation not valid")
+      }
+    }
+  }
 
   def apply(map: Map[String, Any], userId: Int): Session = {
     try {

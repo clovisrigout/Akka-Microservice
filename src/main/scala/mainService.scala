@@ -7,27 +7,33 @@ import akka.actor.{ActorSystem, Props}
 import akka.http.scaladsl.model.{HttpResponse, StatusCodes, headers}
 import akka.stream.ActorMaterializer
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{RequestContext, Route}
 import akka.http.scaladsl.server.PathMatchers.IntNumber
 import akka.pattern.ask
 import akka.util.Timeout
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import spray.json.DefaultJsonProtocol._
 import exceptions.NoResourceFoundException
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import models.{User, Session}
-import models.request.{GetUserRequest, PostNewSessionRequest, PostNewUserRequest}
+import models.{Session, User}
+import models.request.{GetSessionRequest, GetUserRequest, PostNewSessionRequest, PostNewUserRequest}
 
 trait MainService {
 
   implicit val actorSystem: ActorSystem
   implicit val materializer: ActorMaterializer
-
   implicit def executor: ExecutionContextExecutor
-
   implicit val timeout = Timeout(5L, TimeUnit.SECONDS)
 
   lazy val userActor = actorSystem.actorOf(Props[UserActor])
   lazy val sessionActor = actorSystem.actorOf(Props[SessionActor])
+
+  implicit val newUserFormat = jsonFormat(PostNewUserRequest, "fName", "lName", "email", "password")
+  implicit val newSessionFormat = jsonFormat(PostNewSessionRequest, "email", "password")
+  implicit val getSessionFormat = jsonFormat(GetSessionRequest, "sessionKey", "userId")
+  implicit val sessionFormat = jsonFormat(Session.apply, "id", "sessionKey", "userId")
+  implicit val userFormat = jsonFormat(User.apply, "id", "fName", "lName", "email")
 
   val corsHeaders = List(
     headers.RawHeader("Access-Control-Allow-Origin", "*"),
@@ -40,46 +46,54 @@ trait MainService {
       options {
         complete("")
       } ~
-        path("") {
-          helloRoute
-        } ~
-        pathPrefix("users") {
-          userRoute
-        } ~
-        path("sessions") {
-          sessionRoute
-        }
+      path("") {
+        helloRoute
+      } ~
+      pathPrefix("users") {
+        userRoute
+      } ~
+      path("sessions") {
+        sessionRoute
+      }
     }
   }
 
-  private lazy val helloRoute =
-    get {
-      complete {
-        "Hello World"
-      }
-    }
 
-  private lazy val sessionRoute =
+  private lazy val helloRoute: Route = { ctx =>
+    ctx.complete {
+      "Hello World"
+    }
+  }
+
+  private lazy val sessionRoute : Route =
     get {
-      complete {
-        HttpResponse(StatusCodes.OK, entity = "GET Session request")
+      entity(as[GetSessionRequest]) { request =>
+        val responseFuture: Future[Any] = sessionActor ? request
+        onSuccess(responseFuture) {
+          case (session: Session) => {
+            complete(s"{$session}")
+          }
+          case e: NoResourceFoundException => {
+            complete {
+              HttpResponse(StatusCodes.NoContent, entity = e.message)
+            }
+          }
+        }
       }
     } ~
     post {
-      parameters("email".as[String], "password".as[String]) {
-        (email: String, password: String) =>
-          val request: PostNewSessionRequest = PostNewSessionRequest(email, password)
-          val responseFuture: Future[Any] = sessionActor ? request
-          onSuccess(responseFuture) {
-            case (user : User, session: Session) => {
-              complete(s"{$user, $session}")
-            }
-            case e: NoResourceFoundException => {
-              complete {
-                HttpResponse(StatusCodes.OK, entity = e.message)
-              }
+      entity(as[PostNewSessionRequest]) { request =>
+        val responseFuture: Future[Any] = sessionActor ? request
+        onSuccess(responseFuture) {
+          case (user : User, session: Session) => {
+            complete(s"{$user, $session}")
+          }
+          case e: NoResourceFoundException => {
+            complete {
+              HttpResponse(StatusCodes.NoContent, entity = e.message)
             }
           }
+        }
       }
     }
 
@@ -91,25 +105,23 @@ trait MainService {
         }
       } ~
       post {
-        parameters("fName".as[String], "lName".as[String], "email".as[String], "password".as[String]) {
-          (fName: String, lName: String, email: String, password: String) =>
-            val request: PostNewUserRequest = PostNewUserRequest(fName, lName, email, password)
-            val responseFuture: Future[Any] = userActor ? request
-            onSuccess(responseFuture) {
-              case (user : User, session: Session) => {
-                complete(s"{$user, $session}")
-              }
-              case e: NoResourceFoundException => {
-                complete {
-                  HttpResponse(StatusCodes.OK, entity = e.message)
-                }
-              }
-              case _ => {
-                complete {
-                  HttpResponse(StatusCodes.OK, entity = "ALSDASDASDASDA")
-                }
+        entity(as[PostNewUserRequest]) { request =>
+          val responseFuture: Future[Any] = userActor ? request
+          onSuccess(responseFuture) {
+            case (user : User, session: Session) => {
+              complete(s"{$user, $session}")
+            }
+            case e: NoResourceFoundException => {
+              complete {
+                HttpResponse(StatusCodes.NoContent, entity = e.message)
               }
             }
+            case _ => {
+              complete {
+                HttpResponse(StatusCodes.BadRequest, entity = "")
+              }
+            }
+          }
         }
       }
     } ~
@@ -123,7 +135,7 @@ trait MainService {
           }
           case e: NoResourceFoundException => {
             complete {
-              HttpResponse(StatusCodes.BadRequest, entity = e.message)
+              HttpResponse(StatusCodes.NoContent, entity = e.message)
             }
           }
         }

@@ -8,6 +8,8 @@ import akka.http.scaladsl.settings.ServerSettings
 import akka.stream.ActorMaterializer
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+
+import scala.io.StdIn
  
 object MainServer extends App with MainService {
  
@@ -22,7 +24,12 @@ object MainServer extends App with MainService {
 	startServer(host, port)
 
 	def startServer(host: String, port: Int) = {
-		Http().bindAndHandle(routes, host, port)
-	}
+		val bindingFuture = Http().bindAndHandle(routes, host, port)
+    println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+    StdIn.readLine() // let it run until user presses return
+    bindingFuture
+      .flatMap(_.unbind()) // trigger unbinding from the port
+      .onComplete(_ => actorSystem.terminate()) // and shutdown when done
+  }
 
 }

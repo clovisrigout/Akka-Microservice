@@ -5,7 +5,7 @@ import java.sql.Connection
 
 import database.DBRequest
 
-class PostNewUserRequest(val fName: String, val lName: String, val email: String, val password: String) extends DBRequest{
+case class PostNewUserRequest(fName: String, lName: String, email: String, password: String) extends DBRequest{
 
   val sqlQuery = s"{Call CreateUser(?, ?, ?, ?)}"
 
@@ -18,9 +18,4 @@ class PostNewUserRequest(val fName: String, val lName: String, val email: String
     stmt
   }
 
-}
-
-object PostNewUserRequest {
-  def apply(fName: String, lName: String, email: String, password: String): PostNewUserRequest =
-    new PostNewUserRequest(fName, lName, email, password)
 }
