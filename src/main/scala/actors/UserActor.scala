@@ -47,10 +47,11 @@ class UserActor extends Actor with ActorLogging {
         case dbResponse : DBResponse => {
           log.info("Received DBResponse")
           if(dbResponse.resultMap.nonEmpty){
-            log.info(s"Received non-empty DBResponse with id = ${dbResponse.resultMap.head("id")}")
+            log.info(s"Received non-empty DBResponse with id = ${dbResponse.resultMap.head("id")} " +
+                     s"and session token = ${dbResponse.resultMap.head("session_key")}")
             val user : User = User(dbResponse.resultMap.head)
             log.info(s"$user")
-            val session = Session(dbResponse.resultMap.head, user.id)
+            val session = Session(dbResponse.resultMap.head)
             log.info(s"$session")
             parent ! (user, session)
           } else {

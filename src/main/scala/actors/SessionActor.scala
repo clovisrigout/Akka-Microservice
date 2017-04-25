@@ -54,7 +54,7 @@ class SessionActor extends Actor with ActorLogging {
             log.info(s"Received non-empty DBResponse")
             val user : User = User(dbResponse.resultMap.head)
             log.info(s"$user")
-            val session : Session = Session(dbResponse.resultMap.head, user.id)
+            val session : Session = Session(dbResponse.resultMap.head)
             log.info(s"$session")
             parent ! (user, session)
           } else {

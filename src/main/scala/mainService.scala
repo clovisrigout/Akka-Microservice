@@ -30,10 +30,11 @@ trait MainService {
   lazy val sessionActor = actorSystem.actorOf(Props[SessionActor])
 
   implicit val newUserFormat = jsonFormat(PostNewUserRequest, "fName", "lName", "email", "password")
+  implicit val getUserFormat = jsonFormat(GetUserRequest, "id", "sessionKey")
   implicit val newSessionFormat = jsonFormat(PostNewSessionRequest, "email", "password")
   implicit val getSessionFormat = jsonFormat(GetSessionRequest, "sessionKey", "userId")
-  implicit val sessionFormat = jsonFormat(Session.apply, "id", "sessionKey", "userId")
   implicit val userFormat = jsonFormat(User.apply, "id", "fName", "lName", "email")
+  implicit val sessionFormat = jsonFormat(Session.apply, "userId", "sessionKey")
 
   val corsHeaders = List(
     headers.RawHeader("Access-Control-Allow-Origin", "*"),
@@ -127,15 +128,16 @@ trait MainService {
     } ~
     path(IntNumber) { (id) =>
       get {
-        val request: GetUserRequest = GetUserRequest(id)
-        val responseFuture: Future[Any] = userActor ? request
-        onSuccess(responseFuture) {
-          case user: User => {
-            complete(s"{$user}")
-          }
-          case e: NoResourceFoundException => {
-            complete {
-              HttpResponse(StatusCodes.NoContent, entity = e.message)
+        entity(as[GetUserRequest]) { request =>
+          val responseFuture: Future[Any] = userActor ? request
+          onSuccess(responseFuture) {
+            case user: User => {
+              complete(s"{$user}")
+            }
+            case e: NoResourceFoundException => {
+              complete {
+                HttpResponse(StatusCodes.NoContent, entity = e.message)
+              }
             }
           }
         }
